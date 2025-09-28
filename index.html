@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Crop Advisor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {font-family: 'Inter', sans-serif; background: url('https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1470&q=80') no-repeat center center fixed; background-size: cover;}
+      .overlay {background: rgba(255,255,255,0.8); backdrop-filter: blur(8px);}
+      .sidebar {background: linear-gradient(180deg, #0f5132, #198754); min-height:100vh; color:white;}
+      .sidebar button {width:100%; text-left; padding:12px; display:flex; align-items:center; gap:8px; font-weight:500; border-radius: 0.5rem;}
+      .sidebar button:hover {background: rgba(255,255,255,0.1); transition:0.2s;}
+      .sidebar button.active {background: rgba(255,255,255,0.2);}
+      .section {display:none;}
+      .section.active {display:block;}
+      .card {transition: transform 0.2s, box-shadow 0.2s; border-radius:1rem;}
+      .card:hover {transform: translateY(-4px); box-shadow: 0 10px 25px rgba(0,0,0,0.15);}
+      .ripple {position: relative; overflow: hidden;}
+      .ripple:after {content:""; position:absolute; width:100%; height:100%; top:0; left:0; pointer-events:none; background: rgba(255,255,255,0.2); opacity:0; transition: opacity 0.3s, transform 0.3s; transform: scale(0);}
+      .ripple:active:after {opacity:1; transform: scale(2); transition:0s;}
+      ::-webkit-scrollbar {width:6px;} ::-webkit-scrollbar-thumb {background: rgba(0,0,0,0.2); border-radius:3px;}
+    </style>
+  </head>
+  <body class="flex">
+    <!-- Sidebar -->
+    <div class="sidebar w-64 flex flex-col p-6 space-y-4">
+      <h1 class="text-2xl font-bold flex items-center gap-2 mb-6">
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/1046/1046784.png"
+          class="w-8 h-8"
+          alt="Logo"
+        />Smart Crop
+      </h1>
+      <button class="tab-btn active" data-target="dashboard">
+        🏠 Dashboard
+      </button>
+      <button class="tab-btn" data-target="pest">🐛 Pest Detector</button>
+      <button class="tab-btn" data-target="schemes">📜 Schemes</button>
+      <button class="tab-btn" data-target="chat">💬 AI Chat</button>
+      <button class="tab-btn" data-target="feedback">📝 Feedback</button>
+      <button class="tab-btn" data-target="profile">⚙️ Settings</button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 p-6 space-y-6 overlay">
+      <!-- Dashboard -->
+      <div
+        id="dashboard"
+        class="section active grid grid-cols-1 md:grid-cols-3 gap-6"
+      >
+        <!-- Soil Health Card -->
+        <div class="bg-green-50 p-4 shadow card">
+          <h3 class="font-semibold mb-2 flex items-center gap-2">
+            <img
+              src="https://cdn-icons-png.flaticon.com/512/3448/3448316.png"
+              class="w-6 h-6"
+              alt=""
+            />Soil Health
+          </h3>
+          <div class="text-sm mb-2">
+            pH:
+            <input
+              type="number"
+              id="phInput"
+              value="6.5"
+              class="w-16 border rounded p-1"
+            />
+            OM:
+            <input
+              type="number"
+              id="omInput"
+              value="2.1"
+              class="w-16 border rounded p-1"
+            />
+          </div>
+          <div id="soilRec" class="text-sm">
+            Recommendation: Balanced NPK guidance
+          </div>
+        </div>
+
+        <!-- Weather Card -->
+        <div class="bg-blue-50 p-4 shadow card">
+          <h3 class="font-semibold mb-2 flex items-center gap-2">
+            <img
+              src="https://cdn-icons-png.flaticon.com/512/1779/1779944.png"
+              class="w-6 h-6"
+              alt=""
+            />Weather & Alerts
+          </h3>
+          <button
+            id="getWeatherBtn"
+            class="px-3 py-1 rounded bg-blue-600 text-white mb-2 ripple"
+          >
+            Get Weather
+          </button>
+          <canvas id="weatherChart" class="h-40"></canvas>
+        </div>
+
+        <!-- Market Card -->
+        <div class="bg-yellow-50 p-4 shadow card">
+          <h3 class="font-semibold mb-2 flex items-center gap-2">
+            <img
+              src="https://cdn-icons-png.flaticon.com/512/2331/2331970.png"
+              class="w-6 h-6"
+              alt=""
+            />Market Prices
+          </h3>
+          <div class="text-sm">Tomato: ₹25/kg</div>
+          <div class="text-sm">Wheat: ₹2100/quintal</div>
+        </div>
+      </div>
+
+      <!-- Pest Detector -->
+      <div id="pest" class="section">
+        <div class="bg-white p-6 shadow rounded-2xl">
+          <h2 class="font-bold flex items-center gap-2 mb-4">
+            <img
+              src="https://cdn-icons-png.flaticon.com/512/616/616408.png"
+              class="w-6 h-6"
+              alt=""
+            />Pest Detector
+          </h2>
+          <input type="file" id="pestUpload" accept="image/*" class="mb-2" />
+          <div id="pestResult"></div>
+        </div>
+      </div>
+
+      <!-- Schemes -->
+      <div id="schemes" class="section">
+        <div class="bg-white p-6 shadow rounded-2xl space-y-2">
+          <h2 class="font-bold flex items-center gap-2 mb-2">
+            <img
+              src="https://cdn-icons-png.flaticon.com/512/2920/2920037.png"
+              class="w-6 h-6"
+              alt=""
+            />Government Schemes
+          </h2>
+          <input
+            type="text"
+            id="schemeQuery"
+            placeholder="Search schemes..."
+            class="w-full border rounded p-2 mb-2 text-sm"
+          />
+          <div id="schemeList" class="max-h-60 overflow-auto"></div>
+        </div>
+      </div>
+
+      <!-- AI Chat -->
+      <div id="chat" class="section">
+        <div class="bg-white p-6 shadow rounded-2xl flex flex-col">
+          <h2 class="font-bold mb-4 flex items-center gap-2">
+            <img
+              src="https://cdn-icons-png.flaticon.com/512/2462/2462719.png"
+              class="w-6 h-6"
+              alt=""
+            />AI Chat
+          </h2>
+          <div
+            id="chatMessages"
+            class="flex-1 flex flex-col gap-2 overflow-auto mb-2 h-64 border rounded p-2"
+          ></div>
+          <div class="flex gap-2">
+            <input
+              id="userInput"
+              placeholder="Ask something..."
+              class="flex-1 border rounded p-2"
+            />
+            <button
+              id="sendBtn"
+              class="px-4 py-2 bg-blue-600 text-white rounded ripple"
+            >
+              Send
+            </button>
+            <button
+              id="voiceBtn"
+              class="px-4 py-2 bg-indigo-500 text-white rounded ripple"
+            >
+              🎤 Speak
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feedback -->
+      <div id="feedback" class="section">
+        <div class="bg-white p-6 shadow rounded-2xl space-y-2">
+          <h2 class="font-bold flex items-center gap-2 mb-2">
+            <img
+              src="https://cdn-icons-png.flaticon.com/512/2910/2910766.png"
+              class="w-6 h-6"
+              alt=""
+            />Feedback
+          </h2>
+          <textarea
+            id="feedbackInput"
+            rows="3"
+            class="border rounded w-full p-2 mb-2"
+          ></textarea>
+          <button
+            id="feedbackBtn"
+            class="px-3 py-1 bg-green-600 text-white rounded ripple"
+          >
+            Submit
+          </button>
+          <div id="feedbackList" class="max-h-48 overflow-auto text-sm"></div>
+        </div>
+      </div>
+
+      <!-- Profile / Settings -->
+      <div id="profile" class="section">
+        <div class="bg-white p-6 shadow rounded-2xl space-y-2">
+          <h2 class="font-bold mb-2">Settings</h2>
+          <label class="flex items-center gap-2"
+            >Language:
+            <select id="locale" class="border rounded p-1">
+              <option value="en">English</option>
+              <option value="hi">हिन्दी</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // --- Tab Navigation ---
+      const tabs = document.querySelectorAll(".tab-btn");
+      const sections = document.querySelectorAll(".section");
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          tabs.forEach((t) => t.classList.remove("active"));
+          tab.classList.add("active");
+          const target = tab.dataset.target;
+          sections.forEach((s) => s.classList.remove("active"));
+          document.getElementById(target).classList.add("active");
+        });
+      });
+
+      // --- Soil ---
+      const phInput = document.getElementById("phInput");
+      const omInput = document.getElementById("omInput");
+      const soilRec = document.getElementById("soilRec");
+      function updateSoilRec() {
+        const ph = parseFloat(phInput.value);
+        const om = parseFloat(omInput.value);
+        const rec = [];
+        if (ph < 6) rec.push("Apply lime to raise pH");
+        if (ph > 7.8) rec.push("Apply sulfur to lower pH");
+        if (om < 1.5) rec.push("Add compost/FYM");
+        rec.push("Balanced NPK guidance");
+        soilRec.textContent = "Recommendation: " + rec.join("; ");
+      }
+      phInput.addEventListener("input", updateSoilRec);
+      omInput.addEventListener("input", updateSoilRec);
+
+      // --- Pest ---
+      const pestUpload = document.getElementById("pestUpload");
+      const pestResult = document.getElementById("pestResult");
+      pestUpload.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          pestResult.innerHTML = `<img src="${ev.target.result}" class="w-32 h-32 object-cover rounded mb-1"/> Preview`;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      // --- Schemes ---
+      const SCHEMES = [
+        { id: "pmkisan", title: "PM-KISAN", benefit: "₹6000/year" },
+        {
+          id: "soilhealth",
+          title: "Soil Health Card",
+          benefit: "Soil testing",
+        },
+        {
+          id: "organic",
+          title: "Organic Farming Support",
+          benefit: "Organic conversion",
+        },
+        {
+          id: "pmksy",
+          title: "PMKSY Irrigation",
+          benefit: "Subsidy micro-irrigation",
+        },
+      ];
+      const schemeQuery = document.getElementById("schemeQuery");
+      const schemeList = document.getElementById("schemeList");
+      function renderSchemes() {
+        const q = schemeQuery.value.trim().toLowerCase();
+        schemeList.innerHTML = "";
+        SCHEMES.filter((s) => !q || s.title.toLowerCase().includes(q)).forEach(
+          (s) => {
+            const div = document.createElement("div");
+            div.className = "p-2 border-b flex justify-between items-center";
+            div.innerHTML = `<div>${s.title} - ${s.benefit}</div><button class="px-2 py-1 bg-green-600 text-white rounded">Apply</button>`;
+            schemeList.appendChild(div);
+          }
+        );
+      }
+      schemeQuery.addEventListener("input", renderSchemes);
+      renderSchemes();
+
+      // --- Feedback ---
+      const feedbackBtn = document.getElementById("feedbackBtn");
+      const feedbackInput = document.getElementById("feedbackInput");
+      const feedbackList = document.getElementById("feedbackList");
+      feedbackBtn.addEventListener("click", () => {
+        const txt = feedbackInput.value.trim();
+        if (!txt) return;
+        const div = document.createElement("div");
+        div.textContent = txt;
+        feedbackList.prepend(div);
+        feedbackInput.value = "";
+      });
+
+      // --- AI Chat ---
+      const chatMessagesEl = document.getElementById("chatMessages");
+      const userInputEl = document.getElementById("userInput");
+      const sendBtn = document.getElementById("sendBtn");
+      const voiceBtn = document.getElementById("voiceBtn");
+
+      function addMessage(from, text) {
+        const div = document.createElement("div");
+        div.className = from === "bot" ? "text-left mb-1" : "text-right mb-1";
+        div.innerHTML = `<span class="inline-block p-2 rounded ${
+          from === "bot" ? "bg-green-100" : "bg-blue-100"
+        } max-w-xl">${text}</span>`;
+        chatMessagesEl.appendChild(div);
+        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        if (from === "bot") speak(text);
+      }
+
+      sendBtn.addEventListener("click", sendMessage);
+      userInputEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") sendMessage();
+      });
+
+      async function sendMessage() {
+        const text = userInputEl.value.trim();
+        if (!text) return;
+        addMessage("user", text);
+        userInputEl.value = "";
+        // Demo AI reply
+        setTimeout(() => addMessage("bot", "AI response: " + text), 500);
+      }
+
+      // --- Voice Input & Output ---
+      let recognition;
+      voiceBtn.addEventListener("click", () => {
+        if (
+          !(
+            "webkitSpeechRecognition" in window || "SpeechRecognition" in window
+          )
+        ) {
+          alert("Speech recognition not supported");
+          return;
+        }
+        if (recognition) {
+          recognition.stop();
+          recognition = null;
+          return;
+        }
+        const SpeechRecognition =
+          window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.lang = "en-US";
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onresult = (event) => {
+          const speech = event.results[0][0].transcript;
+          userInputEl.value = speech;
+          sendMessage();
+        };
+        recognition.onerror = (e) => {
+          console.log(e);
+          recognition = null;
+        };
+        recognition.onend = () => {
+          recognition = null;
+        };
+        recognition.start();
+      });
+
+      function speak(text) {
+        if (!("speechSynthesis" in window)) return;
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = "en-US";
+        speechSynthesis.cancel();
+        speechSynthesis.speak(utter);
+      }
+
+      // --- Weather Chart ---
+      const getWeatherBtn = document.getElementById("getWeatherBtn");
+      const ctx = document.getElementById("weatherChart").getContext("2d");
+      let chart;
+      getWeatherBtn.addEventListener("click", async () => {
+        try {
+          const lat = 31.1471,
+            lon = 75.3412;
+          const apiKey = "YOUR_OPENWEATHERMAP_KEY"; // Replace with real key
+          const res = await fetch(
+            `https://api.openweathermap.org/data/2.5/onecall?lat=${lat}&lon=${lon}&exclude=minutely,daily,alerts&units=metric&appid=${apiKey}`
+          );
+          const data = await res.json();
+          const labels = data.hourly
+            .slice(0, 12)
+            .map((h) => new Date(h.dt * 1000).getHours() + ":00");
+          const temps = data.hourly.slice(0, 12).map((h) => h.temp);
+          if (chart) chart.destroy();
+          chart = new Chart(ctx, {
+            type: "line",
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: "Temp °C",
+                  data: temps,
+                  borderColor: "rgba(59,130,246,1)",
+                  backgroundColor: "rgba(59,130,246,0.2)",
+                  fill: true,
+                  tension: 0.3,
+                },
+              ],
+            },
+            options: { responsive: true },
+          });
+        } catch (e) {
+          alert("Weather fetch failed.");
+        }
+      });
+    </script>
+  </body>
+</html>
